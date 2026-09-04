@@ -41,18 +41,17 @@ bot.on("message:text", async (ctx) => {
   const chatId = ctx.chat.id;
   const messageId = statusMsg.message_id;
 
-  // INTENTIONALLY NOT AWAITED. Telegram webhooks need a fast HTTP response
-  // — grammy enforces this with a ~10s internal timeout on the handler.
-  // bypassSite() can take up to ~25s (launching a real browser, waiting
-  // for redirects), so it has to run *after* we've already responded to
-  // the webhook, not inside the same request/response cycle.
+  // INTENTIONALLY NOT AWAITED.
   //
-  // This is the "fire and forget, then follow up" pattern: kick off the
-  // slow work, let the function return immediately (satisfying the
-  // webhook), and use bot.api directly (not ctx.api) later since by the
-  // time .then() runs, the original update/request is long finished —
-  // ctx is conceptually "done", but the API client itself has no such
-  // lifecycle, so calling it later is completely normal.
+  // The bot itself now runs in long-polling (see bot/index.ts) so grammy's
+  // ~10s *webhook* handler timeout does not apply. We still fire-and-forget
+  // the slow Playwright work so a second incoming message can be ACK'd
+  // while a bypass is already in flight — polling getUpdates shouldn't
+  // stall behind a 25–40s Chromium session.
+  //
+  // Follow-up edits use bot.api (not ctx.api): by the time .then() runs
+  // the original update is finished. The Bot API client has no such
+  // lifecycle, so calling it later is normal.
   bypassSite(url, handler)
     .then((result) => {
       const text =
