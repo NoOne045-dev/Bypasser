@@ -185,9 +185,9 @@ export async function bypassSite(
         lastChangedAt = Date.now();
       } else if (Date.now() - lastChangedAt >= SETTLE_MS) {
         // Page navigation settled, double check offsite destination
-        const finalUrl = page.url();
-        if (isUsableUrl(finalUrl) && !isOnHandlerHost(finalUrl, handler)) {
-          return { success: true, url: finalUrl };
+        const settledUrl = page.url();
+        if (isUsableUrl(settledUrl) && !isOnHandlerHost(settledUrl, handler)) {
+          return { success: true, url: settledUrl };
         }
       }
 
