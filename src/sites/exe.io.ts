@@ -17,10 +17,11 @@ export const exeIoHandler = {
     'button.link-button[data-ref="continue"]', // stage 1: "Continue"
   ],
   textHints: [
-    "continue", // backup match by text, in case the selector above changes
-    "get link", // stage 2: appears after a ~6s countdown
+    "continue",
+    "get link",
     "skip ad",
   ],
   timerSpeedup: true,
   eventBurst: false,
+  timeoutMs: 45_000,
 } satisfies SiteHandler;
