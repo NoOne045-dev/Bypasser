@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: bypass-bot
+    env: docker
+    plan: free
+    envVars:
+      - key: BOT_TOKEN
+        sync: false # set this manually in the Render dashboard, don't commit it
+      - key: WEBHOOK_SECRET
+        generateValue: true # Render generates a random string for you
+    autoDeploy: true
