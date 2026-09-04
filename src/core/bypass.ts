@@ -138,4 +138,80 @@ export async function bypassSite(
     context.on("page", (p) => {
       remember(p.url());
       p.on("framenavigated", (frame) => {
-        if
+        if (frame === p.mainFrame()) {
+          remember(frame.url());
+        }
+      });
+    });
+
+    const page = await context.newPage();
+    page.on("framenavigated", (frame) => {
+      if (frame === page.mainFrame()) {
+        remember(frame.url());
+      }
+    });
+
+    const startTime = Date.now();
+    let lastNavKey = navKey(startUrl);
+    let lastChangedAt = startTime;
+
+    await page.goto(startUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: DEFAULT_TIMEOUT_MS,
+    });
+    remember(page.url());
+
+    // Main execution loop: waiting for page to settle or navigate offsite
+    while (Date.now() - startTime < DEFAULT_TIMEOUT_MS) {
+      const currentUrl = page.url();
+      remember(currentUrl);
+
+      // Check if we navigated offsite to a destination URL
+      const bestOffsite = pickBestOffsite(seen, handler, startUrl);
+      if (bestOffsite) {
+        return { success: true, destinationUrl: bestOffsite, history: seen };
+      }
+
+      // Try DOM link extraction
+      const extracted = await extractDestination(page, handler);
+      if (extracted) {
+        return { success: true, destinationUrl: extracted, history: seen };
+      }
+
+      // Track URL stability
+      const currentNavKey = navKey(currentUrl);
+      if (currentNavKey !== lastNavKey) {
+        lastNavKey = currentNavKey;
+        lastChangedAt = Date.now();
+      } else if (Date.now() - lastChangedAt >= SETTLE_MS) {
+        // Page navigation settled, double check offsite destination
+        const finalUrl = page.url();
+        if (isUsableUrl(finalUrl) && !isOnHandlerHost(finalUrl, handler)) {
+          return { success: true, destinationUrl: finalUrl, history: seen };
+        }
+      }
+
+      await page.waitForTimeout(POLL_MS);
+    }
+
+    // Timeout fallback
+    const finalOffsite = pickBestOffsite(seen, handler, startUrl);
+    if (finalOffsite) {
+      return { success: true, destinationUrl: finalOffsite, history: seen };
+    }
+
+    return {
+      success: false,
+      error: "Timed out waiting for target link",
+      history: seen,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+      history: [],
+    };
+  } finally {
+    await browser.close();
+  }
+}
