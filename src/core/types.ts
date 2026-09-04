@@ -26,7 +26,8 @@ export interface SiteHandler {
 
 export interface BypassResult {
   success: boolean;
-  finalUrl?: string;
+  url?: string;
+  finalUrl?: string; // Kept as optional for backward compatibility if referenced elsewhere
   error?: string;
   /** how many hops the browser navigated through before settling */
   hops?: number;
