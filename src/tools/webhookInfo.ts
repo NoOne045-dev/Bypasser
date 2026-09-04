@@ -14,14 +14,16 @@ async function main() {
   console.log(JSON.stringify(info, null, 2));
 
   if (!info.url) {
-    console.log("\n⚠️  No webhook set — bot is in polling mode (or not started).");
-  } else if (info.last_error_message) {
-    console.log(`\n⚠️  Webhook is set but Telegram reported an error:`);
-    console.log(`   ${info.last_error_message} (at ${new Date((info.last_error_date ?? 0) * 1000)})`);
-    console.log("   This usually means Render's URL is unreachable or returned a non-2xx status.");
+    console.log("\n✅ No webhook set — polling can receive updates.");
   } else {
-    console.log(`\n✅ Webhook is set to: ${info.url}`);
-    console.log("   No delivery errors reported by Telegram.");
+    console.log(`\n⚠️  A webhook is still registered: ${info.url}`);
+    console.log("   Polling will NOT receive messages while this is set.");
+    console.log("   The bot deletes the webhook on startup (bot/index.ts).");
+    if (info.last_error_message) {
+      console.log(
+        `   Last Telegram error: ${info.last_error_message} (at ${new Date((info.last_error_date ?? 0) * 1000)})`
+      );
+    }
   }
 }
 
