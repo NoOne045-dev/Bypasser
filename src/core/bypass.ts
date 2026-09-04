@@ -169,13 +169,13 @@ export async function bypassSite(
       // Check if we navigated offsite to a destination URL
       const bestOffsite = pickBestOffsite(seen, handler, startUrl);
       if (bestOffsite) {
-        return { success: true, destinationUrl: bestOffsite, history: seen };
+        return { success: true, url: bestOffsite };
       }
 
       // Try DOM link extraction
       const extracted = await extractDestination(page, handler);
       if (extracted) {
-        return { success: true, destinationUrl: extracted, history: seen };
+        return { success: true, url: extracted };
       }
 
       // Track URL stability
@@ -187,7 +187,7 @@ export async function bypassSite(
         // Page navigation settled, double check offsite destination
         const finalUrl = page.url();
         if (isUsableUrl(finalUrl) && !isOnHandlerHost(finalUrl, handler)) {
-          return { success: true, destinationUrl: finalUrl, history: seen };
+          return { success: true, url: finalUrl };
         }
       }
 
@@ -197,19 +197,17 @@ export async function bypassSite(
     // Timeout fallback
     const finalOffsite = pickBestOffsite(seen, handler, startUrl);
     if (finalOffsite) {
-      return { success: true, destinationUrl: finalOffsite, history: seen };
+      return { success: true, url: finalOffsite };
     }
 
     return {
       success: false,
       error: "Timed out waiting for target link",
-      history: seen,
     };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
-      history: [],
     };
   } finally {
     await browser.close();
