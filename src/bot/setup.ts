@@ -38,22 +38,35 @@ bot.on("message:text", async (ctx) => {
   }
 
   const statusMsg = await ctx.reply(`⏳ Bypassing ${handler.tag}...`);
+  const chatId = ctx.chat.id;
+  const messageId = statusMsg.message_id;
 
-  const result = await bypassSite(url, handler);
-
-  if (result.success && result.finalUrl) {
-    await ctx.api.editMessageText(
-      ctx.chat.id,
-      statusMsg.message_id,
-      `✅ Final link:\n${result.finalUrl}\n\n(${result.hops ?? 0} hop(s))`
-    );
-  } else {
-    await ctx.api.editMessageText(
-      ctx.chat.id,
-      statusMsg.message_id,
-      `❌ Couldn't bypass this link: ${result.error ?? "unknown error"}`
-    );
-  }
+  // INTENTIONALLY NOT AWAITED. Telegram webhooks need a fast HTTP response
+  // — grammy enforces this with a ~10s internal timeout on the handler.
+  // bypassSite() can take up to ~25s (launching a real browser, waiting
+  // for redirects), so it has to run *after* we've already responded to
+  // the webhook, not inside the same request/response cycle.
+  //
+  // This is the "fire and forget, then follow up" pattern: kick off the
+  // slow work, let the function return immediately (satisfying the
+  // webhook), and use bot.api directly (not ctx.api) later since by the
+  // time .then() runs, the original update/request is long finished —
+  // ctx is conceptually "done", but the API client itself has no such
+  // lifecycle, so calling it later is completely normal.
+  bypassSite(url, handler)
+    .then((result) => {
+      const text =
+        result.success && result.finalUrl
+          ? `✅ Final link:\n${result.finalUrl}\n\n(${result.hops ?? 0} hop(s))`
+          : `❌ Couldn't bypass this link: ${result.error ?? "unknown error"}`;
+      return bot.api.editMessageText(chatId, messageId, text);
+    })
+    .catch((err) => {
+      // Without this .catch, a failure here becomes an "unhandled promise
+      // rejection" — Node.js logs a scary warning but the process survives.
+      // Catching it explicitly means we control the log message instead.
+      console.error("Background bypass failed:", err);
+    });
 });
 
 bot.catch((err) => {
